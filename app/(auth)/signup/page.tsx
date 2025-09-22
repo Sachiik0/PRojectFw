@@ -21,31 +21,7 @@ export default function SignupPage() {
     setSuccess('');
 
     try {
-      // 1️⃣ Check if email already exists
-      const { data: existingEmail } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (existingEmail) {
-        setError('Email is already taken');
-        return;
-      }
-
-      // 2️⃣ Check if pen name already exists
-      const { data: existingPen } = await supabase
-        .from('profiles')
-        .select('pen_name')
-        .eq('pen_name', penName)
-        .maybeSingle();
-
-      if (existingPen) {
-        setError('Pen name is already taken');
-        return;
-      }
-
-      // 3️⃣ Create auth user
+      // 1️⃣ Create auth user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -62,14 +38,12 @@ export default function SignupPage() {
         return;
       }
 
-      // 4️⃣ Insert profile row with correct pen name
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: user.id,
-          email,
-          pen_name: penName, // <- ensure this is explicitly passed
-        },
-      ]);
+      // 2️⃣ Insert profile AFTER user is created
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: user.id, email: email, pen_name: penName }])
+        .select()
+        .single(); // ensures we get the inserted row
 
       if (profileError) {
         setError('Failed to create profile: ' + profileError.message);
