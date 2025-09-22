@@ -1,21 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,           // Helps catch potential React issues
-  swcMinify: true,                 // Uses the SWC compiler for faster builds
+  reactStrictMode: true,
+  swcMinify: true,
   experimental: {
-    appDir: true,                  // Enables the new App Router
-    typedRoutes: true,             // Optional: gives typed routing if you want
+    appDir: true,
+    typedRoutes: true,
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',            // Allow any remote images (change if needed)
+        hostname: '**',
       },
     ],
   },
   eslint: {
-    ignoreDuringBuilds: true,      // Prevent ESLint from breaking the build
+    ignoreDuringBuilds: true,
   },
 }
 
