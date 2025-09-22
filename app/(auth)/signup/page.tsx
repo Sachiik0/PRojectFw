@@ -9,30 +9,44 @@ export default function SignupPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
 
   const handleSignup = async (formData: FormData) => {
     setLoading(true);
     setError('');
+    setSuccess('');
 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const penName = formData.get('penName') as string;
 
     try {
-      // 1️⃣ Check if pen name is already taken
-      const { data: existingProfile } = await supabase
+      // 1️⃣ Check if email already exists
+      const { data: existingEmail } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingEmail) {
+        setError('Email is already taken');
+        return;
+      }
+
+      // 2️⃣ Check if pen name already exists
+      const { data: existingPen } = await supabase
         .from('profiles')
         .select('pen_name')
         .eq('pen_name', penName)
         .maybeSingle();
 
-      if (existingProfile) {
+      if (existingPen) {
         setError('Pen name is already taken');
         return;
       }
 
-      // 2️⃣ Create auth user
+      // 3️⃣ Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -49,36 +63,22 @@ export default function SignupPage() {
         return;
       }
 
-      // 3️⃣ Insert profile row with foreign key = auth user id
+      // 4️⃣ Insert profile row
       const { error: profileError } = await supabase.from('profiles').insert([
         {
-          id: user.id, // must match auth.users.id
+          id: user.id,
           email,
           pen_name: penName,
         },
       ]);
 
       if (profileError) {
-        // Handle duplicate key errors cleanly
-        if (profileError.code === '23505') {
-          if (profileError.message.includes('profiles_email_key')) {
-            setError('Email is already taken');
-          } else if (profileError.message.includes('profiles_pen_name_key')) {
-            setError('Pen name is already taken');
-          } else {
-            setError('Email or pen name is already taken');
-          }
-        } else if (profileError.code === '23503') {
-          setError('Auth user not created properly. Try again.');
-        } else {
-          setError('Failed to create profile: ' + profileError.message);
-        }
+        setError('Failed to create profile: ' + profileError.message);
         return;
       }
 
-      // 4️⃣ Success → redirect
+      setSuccess('User created successfully!');
       router.push('/');
-      router.refresh();
     } catch (err) {
       console.error(err);
       setError('An unexpected error occurred');
@@ -140,9 +140,8 @@ export default function SignupPage() {
             {loading ? 'Loading...' : 'Sign Up'}
           </button>
 
-          {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {success && <p className="text-green-500 text-sm text-center">{success}</p>}
         </form>
       </div>
     </div>
