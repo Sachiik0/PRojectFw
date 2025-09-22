@@ -14,7 +14,7 @@ import {
   UserPlus,
   UserMinus
 } from 'lucide-react'
-import type { Post, Profile, Follow } from '@/lib/types'
+import type { Post, Profile } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/utils'
 
 interface UserProfileProps {
@@ -32,77 +32,68 @@ export function UserProfile({ penName }: UserProfileProps) {
 
   const isOwnProfile = currentUserProfile?.pen_name === penName
 
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        // Fetch user profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('pen_name', penName)
-          .single()
+  // helper to fetch posts
+  const fetchPosts = async (profileId: string) => {
+    const { data: postsData } = await supabase
+      .from('posts')
+      .select(`*, profiles (pen_name)`)
+      .eq('user_id', profileId)
+      .eq('is_hidden', false)
+      .order('created_at', { ascending: false })
 
-        if (profileError || !profileData) {
-          console.error('Profile not found:', profileError)
-          setLoading(false)
-          return
-        }
+    if (!postsData) return []
 
-        setProfile(profileData)
+    if (user) {
+      const postIds = postsData.map(p => p.id)
+      const { data: likes } = await supabase
+        .from('likes')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .in('post_id', postIds)
 
-        // Fetch user's posts
-        const { data: postsData } = await supabase
-          .from('posts')
-          .select(`
-            *,
-            profiles (pen_name)
-          `)
-          .eq('user_id', profileData.id)
-          .eq('is_hidden', false)
-          .order('created_at', { ascending: false })
+      const likedPostIds = new Set(likes?.map(l => l.post_id) || [])
+      return postsData.map(p => ({ ...p, is_liked: likedPostIds.has(p.id) }))
+    }
+    return postsData
+  }
 
-        // Check if current user has liked each post
-        if (user && postsData) {
-          const postIds = postsData.map(post => post.id)
-          const { data: likes } = await supabase
-            .from('likes')
-            .select('post_id')
-            .eq('user_id', user.id)
-            .in('post_id', postIds)
+  // helper to fetch profile
+  const fetchProfile = async () => {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('pen_name', penName)
+      .single<Profile>()
 
-          const likedPostIds = new Set(likes?.map(like => like.post_id) || [])
-          
-          const postsWithLikes = postsData.map(post => ({
-            ...post,
-            is_liked: likedPostIds.has(post.id)
-          }))
-
-          setPosts(postsWithLikes)
-        } else {
-          setPosts(postsData || [])
-        }
-
-        // Check if current user is following this profile
-        if (user && !isOwnProfile) {
-          const { data: followData } = await supabase
-            .from('follows')
-            .select('*')
-            .eq('follower_id', user.id)
-            .eq('following_id', profileData.id)
-            .single()
-
-          setIsFollowing(!!followData)
-        }
-
-      } catch (error) {
-        console.error('Error fetching profile data:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (profileError || !profileData) {
+      console.error('Profile not found:', profileError)
+      setLoading(false)
+      return
     }
 
-    fetchProfileData()
-  }, [penName, user, isOwnProfile, supabase])
+    setProfile(profileData)
+
+    const userPosts = await fetchPosts(profileData.id)
+    setPosts(userPosts)
+
+    if (user && !isOwnProfile) {
+      const { data: followData } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', user.id)
+        .eq('following_id', profileData.id)
+        .maybeSingle()
+
+      setIsFollowing(!!followData)
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [penName, user, isOwnProfile])
 
   const handleFollow = async () => {
     if (!user || !profile || isOwnProfile) return
@@ -110,7 +101,6 @@ export function UserProfile({ penName }: UserProfileProps) {
     setFollowLoading(true)
     try {
       if (isFollowing) {
-        // Unfollow
         const { error } = await supabase
           .from('follows')
           .delete()
@@ -119,13 +109,9 @@ export function UserProfile({ penName }: UserProfileProps) {
 
         if (!error) {
           setIsFollowing(false)
-          setProfile(prev => prev ? {
-            ...prev,
-            followers_count: prev.followers_count - 1
-          } : null)
+          await fetchProfile() // refresh profile counts
         }
       } else {
-        // Follow
         const { error } = await supabase
           .from('follows')
           .insert({
@@ -135,19 +121,13 @@ export function UserProfile({ penName }: UserProfileProps) {
 
         if (!error) {
           setIsFollowing(true)
-          setProfile(prev => prev ? {
-            ...prev,
-            followers_count: prev.followers_count + 1
-          } : null)
+          await fetchProfile() // refresh profile counts
 
-          // Create notification
-          await supabase
-            .from('notifications')
-            .insert({
-              user_id: profile.id,
-              type: 'follow',
-              content: `${currentUserProfile?.pen_name || 'Someone'} started following you`,
-            })
+          await supabase.from('notifications').insert({
+            user_id: profile.id,
+            type: 'follow',
+            content: `${currentUserProfile?.pen_name || 'Someone'} started following you`,
+          })
         }
       }
     } catch (error) {
@@ -274,8 +254,7 @@ export function UserProfile({ penName }: UserProfileProps) {
             <p className="text-gray-600">
               {isOwnProfile 
                 ? 'Share your first thought, poem, or story with the world!'
-                : `${profile.pen_name} hasn't shared anything yet.`
-              }
+                : `${profile.pen_name} hasn't shared anything yet.`}
             </p>
           </div>
         ) : (
@@ -284,7 +263,7 @@ export function UserProfile({ penName }: UserProfileProps) {
               <PostCard 
                 key={post.id} 
                 post={post} 
-                onPostUpdate={() => window.location.reload()}
+                onPostUpdate={() => fetchPosts(profile.id).then(setPosts)}
               />
             ))}
           </div>
