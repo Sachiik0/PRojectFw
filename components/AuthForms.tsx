@@ -25,64 +25,54 @@ export default function AuthForms({ mode }: AuthFormProps) {
   const [error, setError] = useState('')
 
   const handleSignup = async (data: SignupForm) => {
-  setLoading(true)
-  setError('')
+    setLoading(true)
+    setError('')
 
-  try {
-    // sign up auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    })
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      })
 
-    if (authError) {
-      setError(authError.message)
-      return
-    }
-
-    const user = authData?.user
-    if (!user) {
-      setError('No user returned after signup')
-      return
-    }
-
-    // create profile row
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: user.id,
-          email: data.email,
-          pen_name: data.penName,
-        },
-      ])
-
-    if (profileError) {
-      // Handle duplicate key errors
-      if (profileError.code === '23505') {
-        if (profileError.message.includes('profiles_email_key')) {
-          setError('Email is already taken')
-        } else if (profileError.message.includes('profiles_pen_name_key')) {
-          setError('Pen name is already taken')
-        } else {
-          setError('Email or pen name is already taken')
-        }
-      } else {
-        setError('Failed to create profile: ' + profileError.message)
+      if (authError) {
+        setError(authError.message)
+        return
       }
-      return
+
+      const user = authData?.user
+      if (!user) {
+        setError('No user returned after signup')
+        return
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: user.id, email: data.email, pen_name: data.penName }])
+
+      if (profileError) {
+        if (profileError.code === '23505') {
+          if (profileError.message.includes('profiles_email_key')) {
+            setError('Email is already taken')
+          } else if (profileError.message.includes('profiles_pen_name_key')) {
+            setError('Pen name is already taken')
+          } else {
+            setError('Email or pen name is already taken')
+          }
+        } else {
+          setError('Failed to create profile: ' + profileError.message)
+        }
+        return
+      }
+
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
     }
-
-    router.push('/')
-    router.refresh()
-  } catch (err) {
-    console.error(err)
-    setError('An unexpected error occurred')
-  } finally {
-    setLoading(false)
   }
-}
-
 
   const handleLogin = async (data: LoginForm) => {
     setLoading(true)
@@ -156,7 +146,7 @@ export default function AuthForms({ mode }: AuthFormProps) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded bg-blue-500 p-2 text-white"
+        className="w-full rounded bg-blue-500 p-2 text-white disabled:opacity-50"
       >
         {loading ? 'Loading…' : mode === 'signup' ? 'Sign Up' : 'Log In'}
       </button>
