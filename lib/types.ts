@@ -3,6 +3,7 @@ export interface Profile {
   pen_name: string;
   email: string;
   created_at: string;
+  updated_at?: string;
   followers_count: number;
   following_count: number;
   posts_count: number;
@@ -54,10 +55,13 @@ export interface Notification {
   content: string;
   is_read: boolean;
   created_at: string;
+  actor_id?: string;
+  post_id?: string;
 }
 
 export interface AuthUser {
   id: string;
   email?: string;
   pen_name?: string;
+  created_at?: string;
 }
