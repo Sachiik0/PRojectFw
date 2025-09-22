@@ -12,7 +12,8 @@ import {
   FileText, 
   Users, 
   UserPlus,
-  UserMinus
+  UserMinus,
+  Edit2
 } from 'lucide-react'
 import type { Post, Profile } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/utils'
@@ -27,12 +28,13 @@ export function UserProfile({ penName }: UserProfileProps) {
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [followLoading, setFollowLoading] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [newPenName, setNewPenName] = useState('')
   const { user, profile: currentUserProfile } = useAuth()
   const supabase = createClient()
 
   const isOwnProfile = currentUserProfile?.pen_name === penName
 
-  // helper to fetch posts
   const fetchPosts = async (profileId: string) => {
     const { data: postsData } = await supabase
       .from('posts')
@@ -57,7 +59,6 @@ export function UserProfile({ penName }: UserProfileProps) {
     return postsData
   }
 
-  // helper to fetch profile
   const fetchProfile = async () => {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -72,6 +73,7 @@ export function UserProfile({ penName }: UserProfileProps) {
     }
 
     setProfile(profileData)
+    setNewPenName(profileData.pen_name)
 
     const userPosts = await fetchPosts(profileData.id)
     setPosts(userPosts)
@@ -92,12 +94,10 @@ export function UserProfile({ penName }: UserProfileProps) {
 
   useEffect(() => {
     fetchProfile()
-     
   }, [penName, user, isOwnProfile])
 
   const handleFollow = async () => {
     if (!user || !profile || isOwnProfile) return
-
     setFollowLoading(true)
     try {
       if (isFollowing) {
@@ -109,7 +109,7 @@ export function UserProfile({ penName }: UserProfileProps) {
 
         if (!error) {
           setIsFollowing(false)
-          await fetchProfile() // refresh profile counts
+          await fetchProfile()
         }
       } else {
         const { error } = await supabase
@@ -121,7 +121,7 @@ export function UserProfile({ penName }: UserProfileProps) {
 
         if (!error) {
           setIsFollowing(true)
-          await fetchProfile() // refresh profile counts
+          await fetchProfile()
 
           await supabase.from('notifications').insert({
             user_id: profile.id,
@@ -134,6 +134,25 @@ export function UserProfile({ penName }: UserProfileProps) {
       console.error('Error toggling follow:', error)
     } finally {
       setFollowLoading(false)
+    }
+  }
+
+  const handlePenNameSave = async () => {
+    if (!newPenName || !profile) return
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pen_name: newPenName })
+        .eq('id', profile.id)
+
+      if (!error) {
+        setProfile(prev => prev ? { ...prev, pen_name: newPenName } : null)
+        setEditing(false)
+      } else {
+        console.error('Error updating pen name:', error)
+      }
+    } catch (error) {
+      console.error('Error updating pen name:', error)
     }
   }
 
@@ -176,8 +195,28 @@ export function UserProfile({ penName }: UserProfileProps) {
             <div className="bg-amber-100 p-4 rounded-full">
               <User className="h-12 w-12 text-amber-600" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{profile.pen_name}</h1>
+            <div className="flex flex-col">
+              {isOwnProfile && editing ? (
+                <div className="flex space-x-2 items-center">
+                  <input
+                    className="border px-2 py-1 rounded"
+                    value={newPenName}
+                    onChange={e => setNewPenName(e.target.value)}
+                  />
+                  <Button size="sm" onClick={handlePenNameSave}>Save</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-2xl font-bold text-gray-900">{profile.pen_name}</h1>
+                  {isOwnProfile && (
+                    <Edit2 
+                      className="h-4 w-4 text-gray-500 cursor-pointer" 
+                      onClick={() => setEditing(true)} 
+                    />
+                  )}
+                </div>
+              )}
               <p className="text-gray-600 flex items-center space-x-1">
                 <Calendar className="h-4 w-4" />
                 <span>Joined {formatTimeAgo(profile.created_at)}</span>

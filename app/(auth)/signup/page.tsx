@@ -11,15 +11,14 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
+  const [penName, setPenName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSignup = async (formData: FormData) => {
+  const handleSignup = async () => {
     setLoading(true);
     setError('');
     setSuccess('');
-
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const penName = formData.get('penName') as string;
 
     try {
       // 1️⃣ Check if email already exists
@@ -30,7 +29,7 @@ export default function SignupPage() {
         .maybeSingle();
 
       if (existingEmail) {
-        setError('Email is already taken');``
+        setError('Email is already taken');
         return;
       }
 
@@ -63,12 +62,12 @@ export default function SignupPage() {
         return;
       }
 
-      // 4️⃣ Insert profile row
+      // 4️⃣ Insert profile row with correct pen name
       const { error: profileError } = await supabase.from('profiles').insert([
         {
           id: user.id,
           email,
-          pen_name: penName,
+          pen_name: penName, // <- ensure this is explicitly passed
         },
       ]);
 
@@ -101,10 +100,9 @@ export default function SignupPage() {
         </div>
 
         <form
-          onSubmit={async (e: React.FormEvent<HTMLFormElement>) => {
+          onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            await handleSignup(formData);
+            handleSignup();
           }}
           className="space-y-4"
         >
@@ -112,6 +110,9 @@ export default function SignupPage() {
             type="text"
             name="penName"
             placeholder="Pen Name"
+            value={penName}
+            onChange={(e) => setPenName(e.target.value)}
+            autoComplete="off"
             required
             className="w-full rounded border p-2"
           />
@@ -120,6 +121,9 @@ export default function SignupPage() {
             type="email"
             name="email"
             placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
             required
             className="w-full rounded border p-2"
           />
@@ -128,6 +132,9 @@ export default function SignupPage() {
             type="password"
             name="password"
             placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
             required
             className="w-full rounded border p-2"
           />
