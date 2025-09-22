@@ -30,7 +30,7 @@ export default function SignupPage() {
         .maybeSingle();
 
       if (existingEmail) {
-        setError('Email is already taken');
+        setError('Email is already taken');``
         return;
       }
 
@@ -50,9 +50,6 @@ export default function SignupPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: 'https://p-roject-fw.vercel.app', // <-- replace with your actual domain
-        },
       });
 
       if (authError) {
