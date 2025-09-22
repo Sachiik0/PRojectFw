@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/hooks/useAuth'
+export const dynamic = "force-dynamic"
 
 export default function SignupPage() {
   const {
