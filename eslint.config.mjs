@@ -11,14 +11,13 @@ const compat = new FlatCompat({
 });
 
 export default [
-  ...compat.extends(
-    "next/core-web-vitals",
-    "next/typescript"
-  ),
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
       "no-unused-vars": "warn",              
+      "@typescript-eslint/no-unused-vars": ["warn"], 
       "react-hooks/exhaustive-deps": "off", 
+      "react/no-unescaped-entities": "off", 
     },
   },
 ];

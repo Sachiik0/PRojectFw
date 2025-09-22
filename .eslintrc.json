@@ -1,0 +1,7 @@
+{
+  "extends": "next/core-web-vitals",
+  "linterOptions": {
+    "reportUnusedDisableDirectives": true
+  }
+}
+≈
