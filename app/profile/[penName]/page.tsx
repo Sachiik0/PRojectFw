@@ -1,13 +1,13 @@
 // app/profile/[penName]/page.tsx
-
 import { UserProfile } from '@/components/UserProfile'
 
 interface ProfilePageProps {
-  params: {
+  params: Promise<{
     penName: string
-  }
+  }>
 }
 
-export default function Page({ params }: ProfilePageProps) {
-  return <UserProfile penName={params.penName} />
+export default async function Page({ params }: ProfilePageProps) {
+  const { penName } = await params
+  return <UserProfile penName={penName} />
 }
