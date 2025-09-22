@@ -17,9 +17,8 @@ export default [
   ),
   {
     rules: {
-      // add custom rules here
-      "no-unused-vars": "warn",
-      "react-hooks/exhaustive-deps": "off",
+      "no-unused-vars": "warn",              
+      "react-hooks/exhaustive-deps": "off", 
     },
   },
 ];

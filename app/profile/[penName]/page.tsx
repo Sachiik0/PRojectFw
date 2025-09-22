@@ -1,3 +1,5 @@
+// app/profile/[penName]/page.tsx
+
 import { UserProfile } from '@/components/UserProfile'
 
 interface ProfilePageProps {
@@ -6,6 +8,6 @@ interface ProfilePageProps {
   }
 }
 
-export default function ProfilePage({ params }: ProfilePageProps) {
-  return <UserProfile penName={decodeURIComponent(params.penName)} />
+export default function Page({ params }: ProfilePageProps) {
+  return <UserProfile penName={params.penName} />
 }
